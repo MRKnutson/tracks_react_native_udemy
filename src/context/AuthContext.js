@@ -7,11 +7,17 @@ const authReducer = (state, action) => {
   switch (action.type) {
     case "add_error":
       return { ...state, errorMessage: action.payload };
-    case "signup":
+    case "signin":
       return { token: action.payload, errorMessage: "" };
+    case "clear_error_message":
+      return { ...state, errorMessage: "" };
     default:
       return state;
   }
+};
+
+const clearErrorMessage = (dispatch) => () => {
+  dispatch({ type: "clear_error_message" });
 };
 
 const signup =
@@ -23,7 +29,7 @@ const signup =
       // if we sign up we probably want to modify state to say we are authenticated
       console.log(response.data);
       await AsyncStorage.setItem("token", response.data.token);
-      dispatch({ type: "signup", payload: response.data.token });
+      dispatch({ type: "signin", payload: response.data.token });
       // navigate to main flow
       navigate("TrackList");
     } catch (err) {
@@ -36,13 +42,25 @@ const signup =
     }
   };
 
-const signin = (dispatch) => {
-  return ({ email, password }) => {
+const signin =
+  (dispatch) =>
+  async ({ email, password }) => {
+    try {
+      const response = await trackerApi.post("/signin", { email, password });
+      await AsyncStorage.setItem("token", response.data.token);
+      dispatch({ type: "signin", payload: response.data.token });
+      navigate("TrackList");
+    } catch (err) {
+      console.log(err);
+      dispatch({
+        type: "add_error",
+        payload: "Something went wrong with sign in",
+      });
+    }
     // make api request to sign in with email and password
     // if we sign up we probably want to modify state to say we are authenticated
     // if sign up fails, need to reflect error message
   };
-};
 
 const signout = (dispatch) => {
   return () => {
@@ -52,6 +70,6 @@ const signout = (dispatch) => {
 
 export const { Provider, Context } = createDataContext(
   authReducer,
-  { signin, signout, signup },
+  { signin, signout, signup, clearErrorMessage },
   { token: null, errorMessage: "" }
 );
